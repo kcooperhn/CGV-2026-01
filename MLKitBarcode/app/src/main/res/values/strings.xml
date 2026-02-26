@@ -43,4 +43,8 @@
         libero vel nunc consequat, quis tincidunt nisl eleifend. Cras bibendum enim a justo luctus
         vestibulum. Fusce dictum libero quis erat maximus, vitae volutpat diam dignissim.
     </string>
+    <string name="scan_result_title">Resultado del Escaneo</string>
+    <string name="gallery_button">Galería</string>
+    <string name="take_photo_button">Escanear</string>
+    <string name="scan_image_description">Imagen para escanear</string>
 </resources>

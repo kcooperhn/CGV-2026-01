@@ -8,6 +8,7 @@ import android.net.Uri;
 import android.os.Bundle;
 
 import com.google.android.material.snackbar.Snackbar;
+import com.google.mlkit.vision.common.InputImage;
 
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
@@ -41,7 +42,9 @@ public class MainActivity extends AppCompatActivity {
     private ActivityMainBinding binding;
     private static final int REQUEST_PERMISSIONS = 200;
     private static final int REQUEST_IMAGE_CAPTURE = 1;
+    private static final int REQUEST_PICK_IMAGE = 2;
     private String directorioImagen;
+    private Bitmap imagenSeleccionada;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -81,9 +84,28 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        binding.contentMain.btnSeleccionarGaleria.setOnClickListener(v -> {
+            abrirGaleria();
+        });
+
         binding.contentMain.imgBarcode.setVisibility(View.INVISIBLE);
         binding.contentMain.txtResultado.setText("Sin escaneo realizado... selecciona una foto de la galería o toma una con la cámara para iniciar.");
 
+    }
+
+    private void abrirGaleria() {
+        if(checkAndRequestPermissions()){
+            Intent galeriaIntent = new Intent(Intent.ACTION_GET_CONTENT);
+            galeriaIntent.setType("image/*");
+
+            Intent selectorIntent = new Intent(Intent.ACTION_PICK, android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+            selectorIntent.setType("image/*");
+
+            Intent menuSelection = Intent.createChooser(galeriaIntent, "Seleccione una Imagen");
+            menuSelection.putExtra(Intent.EXTRA_INITIAL_INTENTS, new Intent[]{selectorIntent});
+
+            startActivityForResult(menuSelection, REQUEST_PICK_IMAGE);
+        }
     }
 
     @Override
@@ -98,6 +120,12 @@ public class MainActivity extends AppCompatActivity {
                     Log.d("IMAGEN_CAMARA","Imagen encontrada");
                     binding.contentMain.imgBarcode.setVisibility(View.VISIBLE);
                     binding.contentMain.imgBarcode.setImageURI(Uri.fromFile(imgFile));
+                    try {
+                        InputImage imagen = InputImage.fromFilePath(this, Uri.fromFile(imgFile));
+                        imagenSeleccionada = imagen.getBitmapInternal();
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
                 }else{
                     Log.d("IMAGEN_CAMARA","Imagen no encontrada");
                     Bundle extras = data.getExtras();
@@ -105,6 +133,8 @@ public class MainActivity extends AppCompatActivity {
                         Bitmap imagen = (Bitmap) extras.get("data");
                         binding.contentMain.imgBarcode.setVisibility(View.VISIBLE);
                         binding.contentMain.imgBarcode.setImageBitmap(imagen);
+
+                        imagenSeleccionada = imagen;
                     }
                 }
                 binding.contentMain.txtResultado.setText("Foto recuperada, esperando escaneo de código de barras...");
@@ -113,6 +143,29 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
+        if(requestCode == REQUEST_PICK_IMAGE && resultCode == RESULT_OK){
+            //RESULTADO VIENE DE LA GALERIA
+            if(data == null || data.getData() == null){
+                Log.d("IMAGEN_GALERIA","No se seleccionó ninguna foto de la galería");
+                Snackbar.make(binding.getRoot(), "No se seleccionó ninguna foto de la galería", Snackbar.LENGTH_LONG).show();
+            }else{
+                Log.d("IMAGEN_GALERIA","Se seleccionó una foto de la galería");
+                Uri imagenUri = data.getData();
+                try{
+                    InputImage imagen = InputImage.fromFilePath(this, imagenUri);
+
+                    imagenSeleccionada = imagen.getBitmapInternal();
+                    binding.contentMain.imgBarcode.setVisibility(View.VISIBLE);
+                    binding.contentMain.imgBarcode.setImageBitmap(imagenSeleccionada);
+                    binding.contentMain.txtResultado.setText("Foto recuperada de la galería, esperando escaneo de código de barras...");
+                    Snackbar.make(binding.getRoot(), "Imagen recuperada de la galería", Snackbar.LENGTH_LONG).show();
+                    ejecutarEscaneoCodidoBarras();
+                }catch(Exception error){
+                    error.printStackTrace();
+                    Log.d("IMAGEN_GALERIA","Error al recuperar imagen de la galería");
+                }
+            }
+        }
         super.onActivityResult(requestCode, resultCode, data);
     }
 
