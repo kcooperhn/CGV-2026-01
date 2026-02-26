@@ -7,9 +7,17 @@ import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Bundle;
 
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.android.gms.tasks.Task;
 import com.google.android.material.snackbar.Snackbar;
+import com.google.mlkit.vision.barcode.BarcodeScanner;
+import com.google.mlkit.vision.barcode.BarcodeScannerOptions;
+import com.google.mlkit.vision.barcode.BarcodeScanning;
+import com.google.mlkit.vision.barcode.common.Barcode;
 import com.google.mlkit.vision.common.InputImage;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
@@ -35,6 +43,7 @@ import java.io.File;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -86,6 +95,10 @@ public class MainActivity extends AppCompatActivity {
 
         binding.contentMain.btnSeleccionarGaleria.setOnClickListener(v -> {
             abrirGaleria();
+        });
+
+        binding.contentMain.btnEjecutarEscaneo.setOnClickListener(v -> {
+            ejecutarEscaneoCodidoBarras();
         });
 
         binding.contentMain.imgBarcode.setVisibility(View.INVISIBLE);
@@ -171,9 +184,29 @@ public class MainActivity extends AppCompatActivity {
 
     private void ejecutarEscaneoCodidoBarras() {
 
+        BarcodeScannerOptions options =
+                new BarcodeScannerOptions.Builder()
+                        .enableAllPotentialBarcodes()
+                        .build();
 
+        BarcodeScanner scanner = BarcodeScanning.getClient(options);
+        String resultadoEscaneo="Escaneo ejecutado...\n\n";
+        int rotation  = 0;
+        InputImage image = InputImage.fromBitmap(imagenSeleccionada, rotation);
 
-
+        scanner.process(image)
+                .addOnSuccessListener(barcodes -> {
+                    Log.d("BARCODE","Escaneo de código de barras realizado");
+                    for (Barcode barcode : barcodes) {
+                        String rawValue = barcode.getRawValue()+"\n\n";
+                        binding.contentMain.txtResultado.setText(resultadoEscaneo+rawValue);
+                    }
+                })
+                .addOnFailureListener(e -> {
+                    Log.d("BARCODE","Escaneo de código de barras fallido, no se detectaron códigos");
+                    binding.contentMain.txtResultado.setText(resultadoEscaneo+"No se detectaron códigos de barras en la imagen");
+                    Snackbar.make(binding.getRoot(), "No se lograron recuperar códigos de barra legibles", Snackbar.LENGTH_LONG).show();
+                });
 
     }
 
